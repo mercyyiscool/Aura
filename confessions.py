@@ -21,21 +21,22 @@ PANEL_EMBED_DESCRIPTION = (
 
 
 def build_confession_embed(number: int, content: str) -> discord.Embed:
-    return discord.Embed(
-        title=f"Anonymous Confession (#{number})",
-        description=f"\"{content}\"",
-        color=discord.Color.dark_purple(),
+    embed = discord.Embed(
+        description=f"{content}",
+        color=discord.Color.from_rgb(111, 66, 193),
         timestamp=discord.utils.utcnow(),
     )
+    embed.set_footer(text=f"confession #{number} · anonymous")
+    return embed
 
 
 def build_panel_embed() -> discord.Embed:
     embed = discord.Embed(
         title=PANEL_EMBED_TITLE,
         description=PANEL_EMBED_DESCRIPTION,
-        color=discord.Color.dark_purple(),
+        color=discord.Color.from_rgb(111, 66, 193),
     )
-    embed.set_footer(text="Reports go to staff privately -- confessions themselves stay anonymous to everyone else.")
+    embed.set_footer(text="100% anonymous · reports go to staff only")
     return embed
 
 

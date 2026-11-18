@@ -314,7 +314,8 @@ class Fun(commands.Cog):
             description=f"{user_a.mention} × {user_b.mention}\n\n{bar}\n**{pct}%** · {verdict}",
             color=discord.Color.from_rgb(255, 105, 180),
         )
-        embed.set_footer(text="📌 Pinned by an admin -- always the same result" if pinned else "Run it again for a new roll 🎲")
+        if pinned:
+            embed.set_footer(text="📌 Set by an admin")
         return embed
 
     @app_commands.command(name="ship", description="Ship two members and get a compatibility score")
@@ -367,15 +368,15 @@ class Fun(commands.Cog):
     # ---- Rickroll ------------------------------------------------------------
 
     def _rickroll_embed(self, sender: discord.Member, target: discord.Member = None) -> discord.Embed:
+        if target and target.id != sender.id:
+            desc = f"{target.mention} just got Rick Rolled by {sender.mention} 💀\n\nhttps://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        else:
+            desc = f"{sender.mention} Rick Rolled the whole chat 💀\n\nhttps://www.youtube.com/watch?v=dQw4w9WgXcQ"
         embed = discord.Embed(
-            title="🎁 You've Been Rick Rolled!",
-            description=(
-                f"{f'{target.mention}, ' if target else ''}{sender.mention} got you. Never gonna give you up:\n\n"
-                "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-            ),
+            title="🎵 Never Gonna Give You Up",
+            description=desc,
             color=discord.Color.orange(),
         )
-        embed.set_footer(text="A classic. No tricks, just the song.")
         return embed
 
     @app_commands.command(name="rickroll", description="Rickroll someone -- no disguise, it's just the song")

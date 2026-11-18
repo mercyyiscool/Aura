@@ -21,11 +21,10 @@ STATUS_LABELS = {
 }
 STATUS_LINE_RE = re.compile(r"\n\n\*\*Status:\*\* .+$", re.DOTALL)
 
-PANEL_EMBED_TITLE = "💡 Suggest an Update"
+PANEL_EMBED_TITLE = "💡 Got an idea?"
 PANEL_EMBED_DESCRIPTION = (
-    "Got an idea for a feature or change you'd like to see in the bot? Hit "
-    "the button below. Your suggestion gets posted here for everyone to "
-    "see and vote on -- with your name attached, not anonymous."
+    "Drop a suggestion below — features, changes, anything you think would make things better. "
+    "It'll be posted here for everyone to vote on. Your name goes on it, not anonymous."
 )
 
 

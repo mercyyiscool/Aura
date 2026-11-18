@@ -10,33 +10,30 @@ from polls import parse_duration  # same "30m/2h/1d" parser used by /poll
 
 
 def build_giveaway_embed(prize: str, winner_count: int, host, ends_at, entry_count: int, *, ended: bool = False, winners: list = None) -> discord.Embed:
+    host_str = host.mention if hasattr(host, 'mention') else str(host)
     if not ended:
         embed = discord.Embed(
             title=f"🎉 {prize}",
-            description=(
-                f"Click the button below to enter!\n\n"
-                f"**Winners:** {winner_count}\n"
-                f"**Ends:** {discord.utils.format_dt(ends_at, 'R')} ({discord.utils.format_dt(ends_at, 'f')})\n"
-                f"**Hosted by:** {host.mention if hasattr(host, 'mention') else host}\n"
-                f"**Entries:** {entry_count}"
-            ),
-            color=discord.Color.blurple(),
+            description=f"Hit the button to enter — good luck!\n\nEnds {discord.utils.format_dt(ends_at, 'R')}",
+            color=discord.Color.from_rgb(88, 101, 242),
         )
+        embed.add_field(name="Picking", value=f"{winner_count} winner{'s' if winner_count != 1 else ''}", inline=True)
+        embed.add_field(name="Entries", value=str(entry_count), inline=True)
+        embed.add_field(name="Hosted by", value=host_str, inline=True)
+        embed.set_footer(text=f"Ends {discord.utils.format_dt(ends_at, 'f')}")
     else:
         if winners:
-            winner_text = ", ".join(w.mention for w in winners)
+            winner_text = " ".join(w.mention for w in winners)
+            desc = f"🏆 {winner_text}\nCongrats!"
         else:
-            winner_text = "No valid entries -- nobody won."
+            desc = "Nobody entered in time — no winners this round."
         embed = discord.Embed(
-            title=f"🎉 {prize}",
-            description=(
-                f"**Winner{'s' if winner_count != 1 else ''}:** {winner_text}\n"
-                f"**Hosted by:** {host.mention if hasattr(host, 'mention') else host}\n"
-                f"**Entries:** {entry_count}"
-            ),
-            color=discord.Color.dark_grey(),
+            title=f"🎉 {prize} — ended",
+            description=desc,
+            color=discord.Color.from_rgb(100, 100, 100),
         )
-        embed.set_footer(text="Giveaway ended")
+        embed.add_field(name="Total entries", value=str(entry_count), inline=True)
+        embed.add_field(name="Hosted by", value=host_str, inline=True)
     return embed
 
 

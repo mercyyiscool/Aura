@@ -38,31 +38,22 @@ def build_poll_embed(
     for i, opt in enumerate(options):
         count = display_counts.get(i, 0)
         pct = int((count / display_total) * 100) if display_total else 0
-        bar_len = int((count / display_total) * 14) if display_total else 0
-        bar = "🟩" * bar_len + "⬜" * (14 - bar_len)
-        lines.append(f"{OPTION_EMOJIS[i]} **{opt}**\n{bar} `{count} vote(s) · {pct}%`")
+        bar_len = int((count / display_total) * 12) if display_total else 0
+        bar = "█" * bar_len + "░" * (12 - bar_len)
+        lines.append(f"{OPTION_EMOJIS[i]} **{opt}**\n`{bar}` {pct}% — {count} vote{'s' if count != 1 else ''}")
 
-    title_prefix = "🎭 [RIGGED] " if rig_option_index is not None else ""
     embed = discord.Embed(
-        title=("🔒 Poll Ended: " if ended else "📊 ") + title_prefix + question,
+        title=("🔒 " if ended else "📊 ") + question,
         description="\n\n".join(lines),
-        color=discord.Color.dark_gray() if ended else discord.Color.blurple(),
+        color=discord.Color.from_rgb(70, 70, 80) if ended else discord.Color.from_rgb(88, 101, 242),
         timestamp=discord.utils.utcnow(),
     )
-    if rig_option_index is not None:
-        embed.add_field(
-            name="🎭 Rigged for Fun",
-            value=f"{OPTION_EMOJIS[rig_option_index]} **{options[rig_option_index]}** starts with **+{rig_bonus_votes}** bonus votes, openly -- not a secret, just a bit.",
-            inline=False,
-        )
     if not ended and ends_at:
-        embed.add_field(name="Closes", value=discord.utils.format_dt(ends_at, "R"), inline=False)
-    footer = f"{display_total} total vote(s)"
-    if rig_option_index is not None:
-        footer += f" ({total} real + {rig_bonus_votes} rigged)"
+        embed.add_field(name="Closes", value=discord.utils.format_dt(ends_at, "R"), inline=True)
+    footer_parts = [f"{display_total} vote{'s' if display_total != 1 else ''} total"]
     if creator:
-        footer += f" · Poll by {creator}"
-    embed.set_footer(text=footer)
+        footer_parts.append(f"by {creator}")
+    embed.set_footer(text=" · ".join(footer_parts))
     return embed
 
 

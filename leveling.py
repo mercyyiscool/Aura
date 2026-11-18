@@ -162,12 +162,11 @@ class Leveling(commands.Cog):
                     pass
 
         embed = discord.Embed(
-            title=f"🎉 Level Up! You're now level {new_level}",
+            title=f"🎉 Level {new_level}!",
             description=f"*{random.choice(LEVEL_UP_FLAVOR)}*\n\n**Server:** {message.guild.name}",
-            color=discord.Color.blurple(),
+            color=discord.Color.from_rgb(88, 101, 242),
         )
         embed.set_thumbnail(url=message.author.display_avatar.url)
-        embed.add_field(name="\u200b", value="*Made by **Mercyy** for **Friends***", inline=False)
 
         try:
             await message.author.send(embed=embed)
@@ -215,12 +214,11 @@ class Leveling(commands.Cog):
             description = f"💜 **{BOOSTER_XP_MULTIPLIER}x XP** -- server booster perk\n\n" + description
 
         embed = discord.Embed(
-            title=f"{target.display_name}'s Rank",
+            title=f"{target.display_name}",
             description=description,
-            color=discord.Color.green(),
+            color=target.color if target.color != discord.Color.default() else discord.Color.from_rgb(88, 101, 242),
         )
         embed.set_thumbnail(url=target.display_avatar.url)
-        embed.set_footer(text="Made by Mercyy")
         return embed
 
     def _leaderboard_embed(self, guild: discord.Guild) -> discord.Embed | None:
@@ -237,13 +235,12 @@ class Leveling(commands.Cog):
             lines.append(f"{rank_marker}  **{name}**  ·  Level {row['level']}  ·  {row['xp']:,} XP")
 
         embed = discord.Embed(
-            title=f"🏆 {guild.name} XP Leaderboard",
-            description="\n".join(lines) + "\n\n-# Updates live as people chat",
+            title=f"🏆 {guild.name} Leaderboard",
+            description="\n".join(lines),
             color=discord.Color.gold(),
         )
         if guild.icon:
             embed.set_thumbnail(url=guild.icon.url)
-        embed.set_footer(text="Made by Mercyy")
         return embed
 
     async def _setup_level_roles(self, guild: discord.Guild, requester) -> discord.Embed:

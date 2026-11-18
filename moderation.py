@@ -112,25 +112,22 @@ def can_moderate(actor: discord.Member, target: discord.Member) -> bool:
     return get_tier(actor) > target_tier
 
 
-def mod_embed(title: str, description: str, color=discord.Color.orange()) -> discord.Embed:
+def mod_embed(title: str, description: str, color=discord.Color.from_rgb(255, 149, 0)) -> discord.Embed:
     embed = discord.Embed(title=title, description=description, color=color, timestamp=discord.utils.utcnow())
-    embed.set_footer(text="Made by Mercyy")
     return embed
 
 
 def warning_dm_embed(guild: discord.Guild, moderator, reason: str, warning_id: int) -> discord.Embed:
     """The card DMed to the warned member -- matches the reference bot's Warning card layout."""
     embed = discord.Embed(
-        title=f"Warning · {guild.name}",
+        title=f"⚠️ You got a warning in {guild.name}",
         description=(
             f"**Reason**\n{reason}\n\n"
-            f"**Issued by**\n{moderator} · {moderator.mention}\n\n"
-            f"*Warn ID · `{warning_id}`*\n\n"
-            "If you think this is a mistake, open a ticket or contact staff."
+            f"**From**\n{moderator.mention}\n\n"
+            f"Warn ID: `{warning_id}` · If you think this is a mistake, reach out to staff."
         ),
-        color=discord.Color.orange(),
+        color=discord.Color.from_rgb(255, 149, 0),
     )
-    embed.add_field(name="\u200b", value="*Made by **Mercyy** for **Friends***", inline=False)
     return embed
 
 
@@ -273,7 +270,7 @@ class Moderation(commands.Cog):
         until = discord.utils.utcnow() + duration
         try:
             await member.timeout(until, reason=f"Auto-timeout: reached {warning_count} warnings")
-        except discord.Forbidden:
+        except (discord.Forbidden, discord.HTTPException):
             return  # e.g. they have Administrator -- Discord blocks timing them out regardless of role position
 
         duration_text = _format_timedelta(duration)
@@ -282,11 +279,11 @@ class Moderation(commands.Cog):
                 f"You've been automatically timed out in **{guild.name}** for reaching **{warning_count} warnings**.\n"
                 f"Duration: {duration_text}"
             )
-        except discord.Forbidden:
+        except (discord.Forbidden, discord.HTTPException):
             pass
 
         embed = mod_embed(
-            "⏱️ Auto-Timeout Triggered",
+            "⏱️ Auto-timeout",
             f"{member.mention} reached **{warning_count} warnings** and was automatically timed out for **{duration_text}**.",
             color=discord.Color.dark_orange(),
         )
@@ -330,7 +327,7 @@ class Moderation(commands.Cog):
         await self._log_and_confirm(interaction, embed)
         try:
             await member.send(embed=warning_dm_embed(interaction.guild, interaction.user, reason, warning_id))
-        except discord.Forbidden:
+        except (discord.Forbidden, discord.HTTPException):
             pass
         await self._maybe_auto_timeout(interaction.guild, member, count)
 
@@ -355,7 +352,7 @@ class Moderation(commands.Cog):
         if not await self._check_hierarchy(interaction, member):
             return
         count = db.clear_warnings(interaction.guild_id, member.id)
-        embed = mod_embed("🧹 Warnings Cleared", f"Cleared {count} warning(s) for {member.mention}.")
+        embed = mod_embed("🧹 Warnings cleared", f"Wiped {count} warning(s) from {member.mention}'s record.")
         await self._log_and_confirm(interaction, embed)
 
     @app_commands.command(name="removewarning", description="Delete one specific warning")
@@ -364,7 +361,7 @@ class Moderation(commands.Cog):
     async def removewarning(self, interaction: discord.Interaction, warning_id: int):
         removed = db.remove_warning(interaction.guild_id, warning_id)
         if removed:
-            embed = mod_embed("🧹 Warning Removed", f"Removed warning #{warning_id}.")
+            embed = mod_embed("🧹 Warning removed", f"Warning #{warning_id} has been deleted.")
             await self._log_and_confirm(interaction, embed)
         else:
             await interaction.response.send_message(f"No warning with ID #{warning_id} found.", ephemeral=True)
@@ -379,7 +376,7 @@ class Moderation(commands.Cog):
             return
         try:
             await member.send(f"You were kicked from **{interaction.guild.name}**.\nReason: {reason}")
-        except discord.Forbidden:
+        except (discord.Forbidden, discord.HTTPException):
             pass
         await member.kick(reason=f"{reason} — by {interaction.user}")
         embed = mod_embed("👢 Member Kicked", f"{member.mention} was kicked.\n**Reason:** {reason}")
@@ -400,11 +397,11 @@ class Moderation(commands.Cog):
             return
         try:
             await member.edit(nick=nickname, reason=f"Nickname set by {interaction.user}")
-        except discord.Forbidden:
+        except (discord.Forbidden, discord.HTTPException):
             await interaction.response.send_message("Discord refused that -- check my Manage Nicknames permission and role position.", ephemeral=True)
             return
         desc = f"{member.mention}'s nickname was reset." if nickname is None else f"{member.mention}'s nickname is now **{nickname}**."
-        embed = mod_embed("📝 Nickname Changed", desc)
+        embed = mod_embed("📝 Nickname updated", desc)
         await self._log_and_confirm(interaction, embed)
 
     @app_commands.command(name="ban", description="Ban someone")
@@ -415,7 +412,7 @@ class Moderation(commands.Cog):
             return
         try:
             await member.send(f"You were banned from **{interaction.guild.name}**.\nReason: {reason}")
-        except discord.Forbidden:
+        except (discord.Forbidden, discord.HTTPException):
             pass
         await member.ban(reason=f"{reason} — by {interaction.user}", delete_message_seconds=delete_days * 86400)
         embed = mod_embed("🔨 Member Banned", f"{member.mention} was banned.\n**Reason:** {reason}", discord.Color.red())
@@ -428,7 +425,7 @@ class Moderation(commands.Cog):
         try:
             user = await self.bot.fetch_user(int(user_id))
             await interaction.guild.unban(user)
-            embed = mod_embed("🔓 Member Unbanned", f"Unbanned **{user}**.")
+            embed = mod_embed("🔓 Unbanned", f"**{user}** can rejoin the server now.")
             await self._log_and_confirm(interaction, embed)
         except (discord.NotFound, ValueError):
             await interaction.response.send_message("That user ID isn't banned or doesn't exist.", ephemeral=True)
@@ -464,7 +461,7 @@ class Moderation(commands.Cog):
 
         try:
             await member.send(f"You're timed out in **{interaction.guild.name}** {duration_text}.\nReason: {reason}")
-        except discord.Forbidden:
+        except (discord.Forbidden, discord.HTTPException):
             pass
         embed = mod_embed("🔇 Member Timed Out", f"{member.mention} is timed out {duration_text}.\n**Reason:** {reason}")
         await self._log_and_confirm(interaction, embed)
@@ -477,7 +474,7 @@ class Moderation(commands.Cog):
             return
         await member.timeout(None, reason=f"Timeout removed by {interaction.user}")
         db.remove_indefinite_timeout(interaction.guild_id, member.id)
-        embed = mod_embed("🔊 Timeout Removed", f"Removed timeout for {member.mention}.")
+        embed = mod_embed("🔊 Unmuted", f"{member.mention}'s timeout has been lifted.")
         await self._log_and_confirm(interaction, embed)
 
     # ---------------- Channel management ----------------
@@ -488,7 +485,7 @@ class Moderation(commands.Cog):
     async def purge(self, interaction: discord.Interaction, amount: app_commands.Range[int, 1, 1000]):
         await interaction.response.defer(ephemeral=True)
         deleted = await interaction.channel.purge(limit=amount)
-        embed = mod_embed("🧹 Messages Purged", f"Deleted {len(deleted)} message(s) in {interaction.channel.mention}.")
+        embed = mod_embed("🧹 Cleaned up", f"Deleted {len(deleted)} message(s) in {interaction.channel.mention}.")
         embed.set_footer(text=f"By {interaction.user} ({interaction.user.id})")
         await send_log(self.bot, embed)
         await interaction.followup.send(f"Deleted {len(deleted)} message(s).", ephemeral=True)
@@ -498,8 +495,8 @@ class Moderation(commands.Cog):
     @has_mod_access(manage_channels=True)
     async def slowmode(self, interaction: discord.Interaction, seconds: app_commands.Range[int, 0, 21600]):
         await interaction.channel.edit(slowmode_delay=seconds)
-        desc = "Slowmode disabled." if seconds == 0 else f"Slowmode set to {seconds} second(s)."
-        embed = mod_embed("🐢 Slowmode Updated", f"{desc} ({interaction.channel.mention})")
+        desc = "Slowmode is off." if seconds == 0 else f"Messages limited to one every {seconds}s."
+        embed = mod_embed("🐢 Slowmode updated", f"{desc} ({interaction.channel.mention})")
         await self._log_and_confirm(interaction, embed)
 
     async def _set_channel_lock(self, channel: discord.TextChannel, locked: bool, reason: str):
@@ -517,7 +514,7 @@ class Moderation(commands.Cog):
         target = channel or interaction.channel
         try:
             await self._set_channel_lock(target, True, f"Locked by {interaction.user}: {reason}")
-        except discord.Forbidden:
+        except (discord.Forbidden, discord.HTTPException):
             await interaction.response.send_message(f"I don't have permission to manage {target.mention}'s permissions.", ephemeral=True)
             return
         embed = mod_embed("🔒 Channel Locked", f"{target.mention} is now locked.\n**Reason:** {reason}")
@@ -530,10 +527,10 @@ class Moderation(commands.Cog):
         target = channel or interaction.channel
         try:
             await self._set_channel_lock(target, False, f"Unlocked by {interaction.user}")
-        except discord.Forbidden:
+        except (discord.Forbidden, discord.HTTPException):
             await interaction.response.send_message(f"I don't have permission to manage {target.mention}'s permissions.", ephemeral=True)
             return
-        embed = mod_embed("🔓 Channel Unlocked", f"{target.mention} is now unlocked.")
+        embed = mod_embed("🔓 Channel unlocked", f"{target.mention} is open again.")
         await self._log_and_confirm(interaction, embed)
 
     # ---------------- Text/prefix command versions (e.g. "?ban @user spam") ----------------
@@ -577,7 +574,7 @@ class Moderation(commands.Cog):
         # separate from the full embed that goes to the mod-log channel above.
         try:
             await ctx.send(embed=embed)
-        except discord.Forbidden:
+        except (discord.Forbidden, discord.HTTPException):
             pass
 
     @commands.command(name="kick")
@@ -589,7 +586,7 @@ class Moderation(commands.Cog):
             return
         try:
             await member.send(f"You were kicked from **{ctx.guild.name}**.\nReason: {reason}")
-        except discord.Forbidden:
+        except (discord.Forbidden, discord.HTTPException):
             pass
         await member.kick(reason=f"{reason} — by {ctx.author}")
         await self._reply_and_log(ctx, mod_embed("👢 Member Kicked", f"{member.mention} was kicked.\n**Reason:** {reason}"))
@@ -610,11 +607,11 @@ class Moderation(commands.Cog):
             return
         try:
             await member.edit(nick=nickname, reason=f"Nickname set by {ctx.author}")
-        except discord.Forbidden:
+        except (discord.Forbidden, discord.HTTPException):
             await self._deny(ctx, "Discord refused that -- check my Manage Nicknames permission and role position.")
             return
         desc = f"{member.mention}'s nickname was reset." if nickname is None else f"{member.mention}'s nickname is now **{nickname}**."
-        await self._reply_and_log(ctx, mod_embed("📝 Nickname Changed", desc))
+        await self._reply_and_log(ctx, mod_embed("📝 Nickname updated", desc))
 
     @commands.command(name="ban")
     async def ban_text(self, ctx: commands.Context, member: FuzzyMember, *, reason: str = "No reason provided"):
@@ -625,7 +622,7 @@ class Moderation(commands.Cog):
             return
         try:
             await member.send(f"You were banned from **{ctx.guild.name}**.\nReason: {reason}")
-        except discord.Forbidden:
+        except (discord.Forbidden, discord.HTTPException):
             pass
         await member.ban(reason=f"{reason} — by {ctx.author}")
         await self._reply_and_log(ctx, mod_embed("🔨 Member Banned", f"{member.mention} was banned.\n**Reason:** {reason}", discord.Color.red()))
@@ -641,7 +638,7 @@ class Moderation(commands.Cog):
         except (discord.NotFound, discord.HTTPException):
             await self._deny(ctx, "That user ID isn't banned or doesn't exist.")
             return
-        await self._reply_and_log(ctx, mod_embed("🔓 Member Unbanned", f"Unbanned **{user}**."))
+        await self._reply_and_log(ctx, mod_embed("🔓 Unbanned", f"**{user}** can rejoin the server now."))
 
     @commands.command(name="timeout")
     async def timeout_text(self, ctx: commands.Context, member: FuzzyMember, minutes: str, *, reason: str = "No reason provided"):
@@ -673,7 +670,7 @@ class Moderation(commands.Cog):
 
         try:
             await member.send(f"You're timed out in **{ctx.guild.name}** {duration_text}.\nReason: {reason}")
-        except discord.Forbidden:
+        except (discord.Forbidden, discord.HTTPException):
             pass
         await self._reply_and_log(ctx, mod_embed("🔇 Member Timed Out", f"{member.mention} is timed out {duration_text}.\n**Reason:** {reason}"))
 
@@ -686,7 +683,7 @@ class Moderation(commands.Cog):
             return
         await member.timeout(None, reason=f"Timeout removed by {ctx.author}")
         db.remove_indefinite_timeout(ctx.guild.id, member.id)
-        await self._reply_and_log(ctx, mod_embed("🔊 Timeout Removed", f"Removed timeout for {member.mention}."))
+        await self._reply_and_log(ctx, mod_embed("🔊 Unmuted", f"{member.mention}'s timeout has been lifted."))
 
     @commands.command(name="warn")
     async def warn_text(self, ctx: commands.Context, member: FuzzyMember, *, reason: str = "No reason provided"):
@@ -700,7 +697,7 @@ class Moderation(commands.Cog):
         await self._reply_and_log(ctx, mod_embed("⚠️ Member Warned", f"{member.mention} was warned (#{warning_id}).\n**Reason:** {reason}\n**Total warnings:** {count}"))
         try:
             await member.send(embed=warning_dm_embed(ctx.guild, ctx.author, reason, warning_id))
-        except discord.Forbidden:
+        except (discord.Forbidden, discord.HTTPException):
             pass
         await self._maybe_auto_timeout(ctx.guild, member, count)
 
@@ -724,7 +721,7 @@ class Moderation(commands.Cog):
         if not await self._hierarchy_ok(ctx, member):
             return
         count = db.clear_warnings(ctx.guild.id, member.id)
-        await self._reply_and_log(ctx, mod_embed("🧹 Warnings Cleared", f"Cleared {count} warning(s) for {member.mention}."))
+        await self._reply_and_log(ctx, mod_embed("🧹 Warnings cleared", f"Wiped {count} warning(s) from {member.mention}'s record."))
 
     @commands.command(name="removewarning")
     async def removewarning_text(self, ctx: commands.Context, warning_id: int):
@@ -733,7 +730,7 @@ class Moderation(commands.Cog):
             return
         removed = db.remove_warning(ctx.guild.id, warning_id)
         if removed:
-            await self._reply_and_log(ctx, mod_embed("🧹 Warning Removed", f"Removed warning #{warning_id}."))
+            await self._reply_and_log(ctx, mod_embed("🧹 Warning removed", f"Warning #{warning_id} has been deleted."))
         else:
             await ctx.reply(f"No warning with ID #{warning_id} found.", mention_author=False)
 
@@ -764,7 +761,7 @@ class Moderation(commands.Cog):
             await self._deny(ctx, "Seconds must be between 0 and 21600.")
             return
         await ctx.channel.edit(slowmode_delay=seconds)
-        desc = "Slowmode disabled." if seconds == 0 else f"Slowmode set to {seconds} second(s)."
+        desc = "Slowmode is off." if seconds == 0 else f"Messages limited to one every {seconds}s."
         await self._reply_and_log(ctx, mod_embed("🐢 Slowmode Updated", f"{desc} ({ctx.channel.mention})"))
 
     @commands.command(name="lock")
@@ -775,7 +772,7 @@ class Moderation(commands.Cog):
         target = channel or ctx.channel
         try:
             await self._set_channel_lock(target, True, f"Locked by {ctx.author}: {reason}")
-        except discord.Forbidden:
+        except (discord.Forbidden, discord.HTTPException):
             await self._deny(ctx, f"I don't have permission to manage {target.mention}'s permissions.")
             return
         await self._reply_and_log(ctx, mod_embed("🔒 Channel Locked", f"{target.mention} is now locked.\n**Reason:** {reason}"))
@@ -788,10 +785,10 @@ class Moderation(commands.Cog):
         target = channel or ctx.channel
         try:
             await self._set_channel_lock(target, False, f"Unlocked by {ctx.author}")
-        except discord.Forbidden:
+        except (discord.Forbidden, discord.HTTPException):
             await self._deny(ctx, f"I don't have permission to manage {target.mention}'s permissions.")
             return
-        await self._reply_and_log(ctx, mod_embed("🔓 Channel Unlocked", f"{target.mention} is now unlocked."))
+        await self._reply_and_log(ctx, mod_embed("🔓 Channel unlocked", f"{target.mention} is open again."))
 
     async def cog_command_error(self, ctx: commands.Context, error: commands.CommandError):
         command_name = ctx.command.name if ctx.command else None
