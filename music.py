@@ -139,23 +139,46 @@ class Song:
 
     @classmethod
     async def from_query(cls, query: str, requester: discord.Member, loop: asyncio.AbstractEventLoop):
-        try:
-            data = await loop.run_in_executor(None, functools.partial(ytdl.extract_info, query, download=False))
-            source = "youtube"
-        except yt_dlp.utils.DownloadError as e:
-            # If it's a plain text search (not a pasted link) and YouTube blocked
-            # us as a bot, retry the same search on SoundCloud instead -- it
-            # isn't subject to this bot-detection issue at all.
-            if not cls._is_url(query) and "Sign in to confirm" in str(e):
+        # For plain text searches, go SoundCloud first — it has no bot-detection
+        # and works reliably from cloud hosting (Railway IPs get blocked by YouTube).
+        # For direct URLs (YouTube/SoundCloud links), honour them as-is.
+        if not cls._is_url(query):
+            try:
                 data = await loop.run_in_executor(
                     None, functools.partial(ytdl.extract_info, f"scsearch:{query}", download=False)
                 )
                 source = "soundcloud"
+                if "entries" in data:
+                    data = data["entries"][0]
+                # If SoundCloud returned nothing useful, fall through to YouTube
+                if not data.get("url"):
+                    raise yt_dlp.utils.DownloadError("no result")
+            except Exception:
+                # SoundCloud miss — try YouTube as fallback
+                data = await loop.run_in_executor(None, functools.partial(ytdl.extract_info, query, download=False))
+                source = "youtube"
+                if "entries" in data:
+                    data = data["entries"][0]
+        else:
+            # Direct URL — try as given, detect source from domain
+            try:
+                data = await loop.run_in_executor(None, functools.partial(ytdl.extract_info, query, download=False))
+            except yt_dlp.utils.DownloadError as e:
+                if "Sign in to confirm" in str(e):
+                    # YouTube blocked the direct link — try SoundCloud search with the URL as seed
+                    data = await loop.run_in_executor(
+                        None, functools.partial(ytdl.extract_info, f"scsearch:{query}", download=False)
+                    )
+                    source = "soundcloud"
+                    if "entries" in data:
+                        data = data["entries"][0]
+                else:
+                    raise
             else:
-                raise
+                source = "soundcloud" if "soundcloud.com" in query else "youtube"
+                if "entries" in data:
+                    data = data["entries"][0]
 
-        if "entries" in data:
-            data = data["entries"][0]
         return cls(
             source_url=data["url"],
             title=data.get("title", "Unknown title"),
